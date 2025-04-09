@@ -69,8 +69,6 @@ Ces étapes assurent que seul le trafic nécessaire est autorisé et que la zone
 
 ## 4. Configuration de l’administration SSH
 
-### 4.1 Sécurisation de SSH
-
 Pour renforcer la sécurité de l'administration via SSH, j'ai effectué plusieurs configurations :
 
 1. **Modification du port SSH** :
@@ -171,7 +169,7 @@ Si un binaire n’est pas conforme à la politique SELinux en mode `enforcing`, 
 
 ---
 
-### 3.4 Modification d’un profil SELinux
+### 6. Modification d’un profil SELinux
 
 1. **Contexte des fichiers Apache**
 
@@ -203,7 +201,8 @@ sudo setenforce 1
 
 Un test d’accès au serveur est ensuite effectué depuis un navigateur. Si le serveur est mal configuré, l’accès échoue.
 
-![image](https://github.com/user-attachments/assets/277ff5b3-351d-4953-834b-744ed461abd8)
+![image](https://github.com/user-attachments/assets/e4239309-7f2e-435e-aca7-4af9d182ebc7)
+
 
 Alors on peut conclure qu'il est bien configuré
 
@@ -270,30 +269,69 @@ sudo restorecon -Rv /srv/srv/srv_1
 
 7. **Vérification finale**
 
-Une fois le bon contexte appliqué et SELinux en mode `enforcing`, le serveur Apache est de nouveau accessible via le navigateur.
+   Une fois le bon contexte appliqué et SELinux en mode `enforcing`, le serveur Apache est de nouveau accessible via le navigateur.
+
+![image](https://github.com/user-attachments/assets/7f34e867-5fa2-44f1-9281-6c014798c635)
+
 
 ---
 
-### 3.5 Durcissement de la configuration de SELinux
+### 7. Durcissement de la configuration de SELinux
 
-Pour durcir SELinux, le guide CIS Benchmark pour Rocky Linux est utilisé comme référence. Quelques recommandations appliquées :
+   Le durcissement s’appuie sur les recommandations du guide **CIS Benchmark** pour Rocky Linux. Les actions suivantes sont effectuées :
 
-- S'assurer que SELinux est activé et en mode `enforcing` au démarrage :
+1. **Forcer le mode enforcing au démarrage** :
 
 ```bash
 sudo sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
 ```
 
-- Supprimer les modules inutiles avec :
+2. **Vérifier et supprimer les modules inutiles** :
 
+* *Lister tous les modules**
 ```bash
 sudo semodule -l
-sudo semodule -r nom_du_module
 ```
 
-- Activer l’audit des événements SELinux dans `auditd`.
+- **Liste des modules SELinux inutiles à supprimer :**
 
-Après ces modifications, le système est redémarré, puis il est vérifié que les services web et SSH fonctionnent correctement avec SELinux activé en mode `enforcing`, et que les contextes appliqués sont corrects.
+```bash
+sudo semodule -r amanda
+sudo semodule -r automount
+sudo semodule -r bacula
+sudo semodule -r exim
+sudo semodule -r squid
+sudo semodule -r sysstat
+```
 
-Tous les profils fonctionnent comme attendu après ce durcissement.
+Ces modules sont jugés inutiles et peuvent représenter des risques de sécurité s’ils sont laissés actifs dans le système. La suppression de ces modules a été réalisée afin de renforcer la sécurité en réduisant la surface d’attaque.
+
+2. **Vérification et application des changements :**
+
+Après avoir supprimé les modules inutiles, il est recommandé de redémarrer le système pour appliquer pleinement ces modifications et vérifier que tous les services fonctionnent correctement avec SELinux en mode `enforcing`.
+
+---
+
+Cette modification du rapport assure que le durcissement de SELinux est effectué en supprimant les modules inutiles tout en garantissant que les services essentiels restent opérationnels.
+
+3. **S'assurer que l'audit SELinux est activé** :
+
+Le service `auditd` est vérifié et activé :
+
+```bash
+sudo systemctl enable auditd
+sudo systemctl start auditd
+```
+C'est également une bonne pratique pour s'assurer que toutes les actions de SELinux sont auditées, ce qui peut être utile pour le diagnostic et la détection d'activités suspectes. Cette mesure est en ligne avec les recommandations de CIS.
+
+
+4. **Tester la conformité après durcissement** :
+
+Vérification des accès au serveur Apache et au service SSH après redémarrage, en s’assurant que les politiques SELinux en mode `enforcing` ne bloquent pas les services configurés.
+
+![image](https://github.com/user-attachments/assets/7b505c7c-eac8-4bdb-a22d-4043f2c940c9)
+
+Tous les tests d’accès sont concluants après le durcissement. Les politiques appliquées sont strictes et assurent un niveau de sécurité renforcé sans perturber le fonctionnement attendu du système.
+
+
 
